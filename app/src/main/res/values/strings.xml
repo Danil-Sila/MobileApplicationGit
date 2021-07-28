@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Мобильно приложение</string>
+    <string name="action_update">Обновить</string>
+    <string name="view_mibile">Мобильная версия</string>
+    <string name="view_hide">Скрыть новость</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+</resources>
