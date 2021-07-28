@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Мобильно приложение</string>
+    <string name="app_name">Мобильное приложение</string>
     <string name="action_update">Обновить</string>
     <string name="view_mibile">Мобильная версия</string>
     <string name="view_hide">Скрыть новость</string>
