@@ -7,4 +7,12 @@
         android:orderInCategory="1"
         android:title="@string/action_update"
         app:showAsAction="ifRoom" />
+    <group android:checkableBehavior="single">
+        <item
+            android:id="@+id/action_visibleListItem"
+            android:title="@string/action_visibleHideList"
+            android:checkable="true"
+            app:showAsAction="never"
+            />
+    </group>
 </menu>

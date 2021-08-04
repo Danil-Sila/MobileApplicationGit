@@ -7,8 +7,7 @@
     <LinearLayout
         android:orientation="vertical"
         android:layout_height="match_parent"
-        android:layout_width="match_parent"
-        android:background="@color/primary">
+        android:layout_width="match_parent">
 
         <TextView
             android:id="@+id/result_status"
@@ -29,7 +28,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:hint="Поле для поиска"
+                android:layout_marginLeft="20px"
+                android:hint="@string/edtFind"
                 android:inputType="text" />
 
             <Button
@@ -37,7 +37,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginRight="20px"
-                android:text="Сброс">
+                android:layout_marginLeft="20px"
+                android:text="@string/btnCancel">
             </Button>
         </LinearLayout>
         <ListView

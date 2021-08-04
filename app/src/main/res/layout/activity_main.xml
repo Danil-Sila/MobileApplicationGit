@@ -3,7 +3,6 @@
     android:orientation="vertical"
     android:layout_height="match_parent"
     android:layout_width="match_parent"
-    android:background="@color/primary"
     xmlns:android="http://schemas.android.com/apk/res/android">
     <fragment
         android:name="com.example.mobileapplication.ListFragment"

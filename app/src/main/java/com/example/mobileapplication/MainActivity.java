@@ -9,8 +9,10 @@ import androidx.loader.content.CursorLoader;
 import androidx.loader.content.Loader;
 
 import android.annotation.SuppressLint;
+import android.content.ClipData;
 import android.content.Context;
 import android.database.Cursor;
+import android.graphics.Color;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.text.Editable;
@@ -21,6 +23,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.FilterQueryProvider;
 import android.widget.ListView;
@@ -41,64 +44,69 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.concurrent.TimeUnit;
 
-public class MainActivity extends AppCompatActivity implements View.OnClickListener, LoaderManager.LoaderCallbacks<Cursor>{
+import static android.graphics.Color.RED;
 
-    private static final int CM_HIDE_ID = 1;
+public class MainActivity extends AppCompatActivity implements View.OnClickListener{
 
-    TextView result_status;
-    public static final String url = "https://ws-tszh-1c-test.vdgb-soft.ru/api/mobile/news/list";
-    DataBaseHelper dataBaseHelper;
-    Cursor cursor;
-    SimpleCursorAdapter scAdapter;
-    ListView lvNews;
-    EditText edtFind;
-    Fragment fragment;
-    Button btnCancel;
+    //пункты меню
+    private static final int CM_HIDE_ON_ID = 1;
+    private static final int CM_HIDE_OFF_ID = 2;
+    //адрес ресурса
+    private static final String url = "https://ws-tszh-1c-test.vdgb-soft.ru/api/mobile/news/list";
+    private static int item_visible = 0;    //переменная для отображения списка (скрытые / не скрытые новости)
+    public TextView tvStatus;
+    public DataBaseHelper dataBaseHelper;
+    public SimpleCursorAdapter scAdapter;
+    public EditText edtFind;
+    public ListView lvNews;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        result_status = (TextView) findViewById(R.id.result_status);
-        result_status.setText("Новости");
+        tvStatus = (TextView) findViewById(R.id.result_status);
+        tvStatus.setText("Новости");
+
+        lvNews = (ListView) findViewById(R.id.lvNews);
         edtFind = (EditText) findViewById(R.id.edtFind);
-        btnCancel = (Button) findViewById(R.id.btnCancel);
+        Button btnCancel = (Button) findViewById(R.id.btnCancel);
         btnCancel.setOnClickListener(this);
+
         //создаём подключение с БД
         dataBaseHelper = new DataBaseHelper(getApplicationContext());
         dataBaseHelper.open();
+        //функция для отображения данных в списке из БД
+        listViewShow();
         //если база данных пустая, то выполняем запрос к ресурсу и наполняем её
-        if (dataBaseHelper.countData() == 0) new getUrlDate().execute(url);
+        if (dataBaseHelper.countData(0) == 0) new getUrlDate().execute(url);
 
-        lvNews = (ListView) findViewById(R.id.lvNews);
         //по нажатию на строке списка, заменяем фрагмент на фрагмент с Web содержимым
         lvNews.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                String mobileurl = dataBaseHelper.getMobileUrl(id);
-                fragment = new WebFragment();
+                String mobile_url = dataBaseHelper.getMobileUrl(id);
+                Fragment webFragment = new WebFragment();
                 FragmentManager fm = getSupportFragmentManager();
                 FragmentTransaction ft = fm.beginTransaction();
-                fragment = WebFragment.getNewInstance(mobileurl);
-                ft.replace(R.id.fr_main, fragment);
+                webFragment = WebFragment.getNewInstance(mobile_url);
+                ft.replace(R.id.fr_main, webFragment);
                 ft.addToBackStack(null);
                 ft.commit();
             }
         });
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
+    //функция для отображения данных в списке из БД
+    public void listViewShow(){
         //получаем все записи из БД
-        cursor = dataBaseHelper.getData();
-        String[] from;
-        from  = new String[] {DataBaseHelper.col_title, DataBaseHelper.col_annotation};
+        Cursor cursor = dataBaseHelper.getData(item_visible);
+        //массив с данными из БД
+        String[] from  = new String[] {DataBaseHelper.col_title, DataBaseHelper.col_annotation};
+        //массив для отображения данных в списке
         int[] to = new int[] {R.id.tvTitle, R.id.tvAnnotation};
+        //создание адаптера
         scAdapter = new SimpleCursorAdapter(this, R.layout.news_item, cursor, from, to, 0);
-        // создаем лоадер для чтения данных
-        getSupportLoaderManager().initLoader(0, null, this);
         // если в текстовом поле есть текст, выполняем фильтрацию
         // данная проверка нужна при переходе от одной ориентации экрана к другой
         if(!edtFind.getText().toString().isEmpty())
@@ -123,14 +131,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
                 if (constraint == null || constraint.length() == 0) {
 
-                    return dataBaseHelper.getData();
+                    return dataBaseHelper.getData(item_visible);
                 }
                 else {
-                    return dataBaseHelper.getDataFind(constraint);
+                    return dataBaseHelper.getDataFind(constraint,item_visible);
                 }
             }
         });
-        lvNews = (ListView) findViewById(R.id.lvNews);
+        //добавляем адаптер к списку
         lvNews.setAdapter(scAdapter);
         // добавляем контекстное меню к списку
         registerForContextMenu(lvNews);
@@ -150,8 +158,27 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
         switch (id){
+            //по пункту меню - обновить, обновляем данные из ресурса
             case R.id.action_update:
                 new getUrlDate().execute(url);
+                break;
+            //отображения скрытых новостей
+            case R.id.action_visibleListItem:
+                if (item.isChecked()){
+                    item_visible=0;
+                    item.setChecked(false);
+                    listViewShow();
+                    Toast.makeText(this, "Отображены новости без скрытых", Toast.LENGTH_SHORT).show();
+                }else{
+                    if (dataBaseHelper.countData(1)>0){
+                        item.setChecked(true);
+                        item_visible=1;
+                        listViewShow();
+                        Toast.makeText(this, "Отображены скрытые новости", Toast.LENGTH_SHORT).show();
+                    }else {
+                        Toast.makeText(this, "Скрытые новости отсутсвуют", Toast.LENGTH_SHORT).show();
+                    }
+                }
                 break;
         }
         return super.onOptionsItemSelected(item);
@@ -174,7 +201,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         protected void onPreExecute(){
             super.onPreExecute();
-            result_status.setText("Обновление...");
+            tvStatus.setText("Обновление...");
         }
 
         @Override
@@ -228,23 +255,21 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 if (success.equals("true")){
                     JSONObject jsonObjectData = new JSONObject(jsonObject.getString("data"));
                     JSONArray jsonArrayNews = jsonObjectData.getJSONArray("news");
-                    // dataBaseHelper.delData();
                     for (int i=0; i < jsonArrayNews.length(); i++)
                     {
                         try {
-                            JSONObject jsonObjectArray1 = new JSONObject(jsonArrayNews.getString(i));
-
-                            Integer id = jsonObjectArray1.getInt("id");
-                            String title = jsonObjectArray1.getString("title");
-                            String img = jsonObjectArray1.getString("img");
-                            String news_date = jsonObjectArray1.getString("news_date");
-                            String news_date_uts = jsonObjectArray1.getString("news_date_uts");
-                            String annotation = jsonObjectArray1.getString("annotation");
-                            String mobile_url = jsonObjectArray1.getString("mobile_url");
+                            JSONObject jsonObjectNews = new JSONObject(jsonArrayNews.getString(i));
+                            Integer id = jsonObjectNews.getInt("id");
+                            String title = jsonObjectNews.getString("title");
+                            String img = jsonObjectNews.getString("img");
+                            String news_date = jsonObjectNews.getString("news_date");
+                            String news_date_uts = jsonObjectNews.getString("news_date_uts");
+                            String annotation = jsonObjectNews.getString("annotation");
+                            String mobile_url = jsonObjectNews.getString("mobile_url");
                             dataBaseHelper.AddOrUpdData(id, title, img, news_date, news_date_uts, annotation, mobile_url,0);
-                            //обновляем лоадер для чтения данных
-                            getSupportLoaderManager().getLoader(0).forceLoad();
-                            result_status.setText("Новости");
+                            //обновляем данные в списке
+                            listViewShow();
+                            tvStatus.setText("Новости");
                         } catch (JSONException e) {
                             e.printStackTrace();
                             Toast.makeText(MainActivity.this, "Ошибка!", Toast.LENGTH_SHORT).show();
@@ -278,55 +303,34 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public void onCreateContextMenu(ContextMenu menu, View v,
                                     ContextMenu.ContextMenuInfo menuInfo) {
         super.onCreateContextMenu(menu, v, menuInfo);
-        menu.add(0, CM_HIDE_ID, 0, R.string.view_hide);
+        if (item_visible==0){
+            menu.add(0, CM_HIDE_ON_ID, 0, "Скрыть новость");
+        }
+        else{
+            menu.add(0, CM_HIDE_OFF_ID, 0, "Отобразить новость");
+        }
     }
     //обработчик выбора для контекстного меню
     public boolean onContextItemSelected(MenuItem item) {
-        if (item.getItemId() == CM_HIDE_ID) {
+        if (item.getItemId() == CM_HIDE_ON_ID) {
             // получаем из пункта контекстного меню данные по пункту списка
             AdapterView.AdapterContextMenuInfo acmi = (AdapterView.AdapterContextMenuInfo) item.getMenuInfo();
             // извлекаем id записи и устанвливаем скрытие новости
-            dataBaseHelper.visibleItemList(acmi.id);
-            getSupportLoaderManager().getLoader(0).forceLoad();
+            dataBaseHelper.visibleItemList(acmi.id,1);
+            listViewShow();
             Toast.makeText(this, "Новость скрыта!", Toast.LENGTH_SHORT).show();
             return true;
         }
+        if (item.getItemId() == CM_HIDE_OFF_ID) {
+            // получаем из пункта контекстного меню данные по пункту списка
+            AdapterView.AdapterContextMenuInfo acmi = (AdapterView.AdapterContextMenuInfo) item.getMenuInfo();
+            // извлекаем id записи и устанвливаем отображение новости
+            dataBaseHelper.visibleItemList(acmi.id,0);
+            listViewShow();
+            Toast.makeText(this, "Новость отображена!", Toast.LENGTH_SHORT).show();
+            return true;
+        }
         return super.onContextItemSelected(item);
-    }
-
-    @Override
-    public Loader<Cursor> onCreateLoader(int id, Bundle args) {
-        return new MyCursorLoader(this, dataBaseHelper);
-    }
-
-    @Override
-    public void onLoadFinished(Loader<Cursor> loader, Cursor cursor) {
-        scAdapter.swapCursor(cursor);
-    }
-
-    @Override
-    public void onLoaderReset(Loader<Cursor> loader) {
-
-    }
-
-    static class MyCursorLoader extends CursorLoader {
-        DataBaseHelper myDbHelper;
-        public MyCursorLoader(Context context, DataBaseHelper myDbHelper) {
-            super(context);
-            this.myDbHelper = myDbHelper;
-        }
-
-        @Override
-        public Cursor loadInBackground() {
-            Cursor cursor=null;
-            cursor = myDbHelper.getData();
-            try {
-                TimeUnit.SECONDS.sleep(1);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-            return cursor;
-        }
     }
 
     @Override

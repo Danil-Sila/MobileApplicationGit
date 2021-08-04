@@ -22,18 +22,6 @@ public class DataBaseHelper {
     //столбец для скрытия новостей
     public static String col_visible = "visible";
 
-    //создание таблицы с новостями
-    private static  final String DB_CREATE_TABLE =
-            "CREATE TABLE " + table + " (" +
-                    col_id + " INTEGER PRIMARY KEY, " +
-                    col_title + " TEXT, " +
-                    col_img + " TEXT, " +
-                    col_news_date + " TEXT, " +
-                    col_news_date_uts + " TEXT, " +
-                    col_annotation + " TEXT, " +
-                    col_mobile_url + " TEXT, " +
-                    col_visible + " INTEGER);";
-
     private final Context mCtx;
     private DBHelper mDBHelper;
     private SQLiteDatabase mDB;
@@ -58,16 +46,16 @@ public class DataBaseHelper {
         ContentValues cvAdd = new ContentValues();
         ContentValues cvUpd = new ContentValues();
         Cursor c = mDB.rawQuery("SELECT * FROM "+table,null,null);
-        int f = 0;
+        int flag = 0;
         if (c.moveToFirst()){
             do{
                 if (c.getInt(0) == id){
-                    f = 1;
+                    flag = 1;
                     break;
                 }
             }while(c.moveToNext());
         }
-        if (f == 0){
+        if (flag == 0){
             cvAdd.put(col_id, id);
             cvAdd.put(col_title, title);
             cvAdd.put(col_img, img);
@@ -95,29 +83,36 @@ public class DataBaseHelper {
     }
 
     //получить записи из таблицы
-    public Cursor getData(){
+    public Cursor getData(int visible){
         Cursor c;
-        String select = "SELECT *FROM " + table +
-                " WHERE " + col_visible + "= 0"+
-                " ORDER BY " + col_id + " desc";
+        String select;
+        if (visible == 0){
+            select = "SELECT *FROM " + table +
+                    " WHERE " + col_visible + "="+visible+
+                    " ORDER BY " + col_id + " desc";
+        }else {
+            select = "SELECT *FROM " + table +
+                    " WHERE " + col_visible + "="+visible+
+                    " ORDER BY " + col_id + " desc";
+        }
         c = mDB.rawQuery(select,null,null);
         return c;
     }
 
+    //получить все записи из БД
     public Cursor getAllData(){
         return mDB.query(table,null,null,null,null,null,null);
     }
 
-    //фильтрация/фильтрация по новосям
-    public Cursor getDataFind(CharSequence constraint){
+    //поиск/фильтрация по новостям
+    public Cursor getDataFind(CharSequence constraint, int visible){
         String select = "SELECT * FROM " +table +
-                " WHERE "+ col_visible + "= 0"+
+                " WHERE "+ col_visible + "="+visible+
                 " AND ("+ col_title + " like "+"'%" + constraint.toString() + "%'" +
                 " OR " + col_annotation + " like " + "'%" + constraint.toString() + "%')" +
                 " ORDER BY "+col_id+" desc";
         return mDB.rawQuery(select,null,null);
     }
-
 
     //получение url по ID
     public String getMobileUrl(long id){
@@ -129,17 +124,17 @@ public class DataBaseHelper {
     }
 
     //скрытие новости 0-не скрыта , 1-скрыта
-    public void visibleItemList(long id){
+    public void visibleItemList(long id, int visible){
         ContentValues cv = new ContentValues();
-        cv.put(col_visible, 1);
+        cv.put(col_visible, visible);
         mDB.update(table, cv, col_id + "="+id, null);
     }
 
-    //получение количества записей в списке
-    public int countData(){
+    //получение количества записей в списке 0-все записи, 1-скрытые записи
+    public int countData(int visible){
         Cursor c;
         int count = 0;
-        c = getData();
+        c = getData(visible);
         if (c.moveToFirst()){
             do {
                 count++;
@@ -156,12 +151,20 @@ public class DataBaseHelper {
 
         @Override
         public void onCreate(SQLiteDatabase db) {
+            //создание таблицы с новостями
+            String DB_CREATE_TABLE = "CREATE TABLE " + table + " (" +
+                                        col_id + " INTEGER PRIMARY KEY, " +
+                                        col_title + " TEXT, " +
+                                        col_img + " TEXT, " +
+                                        col_news_date + " TEXT, " +
+                                        col_news_date_uts + " TEXT, " +
+                                        col_annotation + " TEXT, " +
+                                        col_mobile_url + " TEXT, " +
+                                        col_visible + " INTEGER);";
             db.execSQL(DB_CREATE_TABLE);
         }
 
         @Override
-        public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-
-        }
+        public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) { }
     }
 }

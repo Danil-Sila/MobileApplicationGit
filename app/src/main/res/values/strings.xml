@@ -5,4 +5,8 @@
     <string name="view_hide">Скрыть новость</string>
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="btnReturn">Назад</string>
+    <string name="action_visibleHideList">Отобразить скрытые новости</string>
+    <string name="edtFind">Поле для поиска</string>
+    <string name="btnCancel">Сброс</string>
 </resources>
